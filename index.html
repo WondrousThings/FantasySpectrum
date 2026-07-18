@@ -312,6 +312,28 @@
   function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function shuffle(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; } return r; }
 
+  /* ============================================================
+     GENTLE OPENING  —  EDIT HERE
+     ------------------------------------------------------------
+     The first few scenarios are drawn only from these gentle
+     themes, so nobody opens on something intense. They are still
+     shuffled among themselves, and everything after them is fully
+     random, so the order stays unpredictable.
+       EASE_IN_COUNT = how many gentle scenarios to open with
+       EASE_IN_THEMES = which themes count as gentle
+     ============================================================ */
+  const EASE_IN_COUNT = 6;
+  const EASE_IN_THEMES = ["Affection & Intimacy", "Slow / Tantric Connection"];
+  /* =================== END GENTLE OPENING ==================== */
+
+  function buildOrder(){
+    const gentle = shuffle(SCENARIOS.filter(s => EASE_IN_THEMES.indexOf(s.th) !== -1));
+    const opener = gentle.slice(0, EASE_IN_COUNT);
+    const openerSet = new Set(opener);
+    const rest = shuffle(SCENARIOS.filter(s => !openerSet.has(s)));
+    return opener.concat(rest);
+  }
+
   const est = Math.round(SCENARIOS.length*0.09);
   $("cntLine").textContent = SCENARIOS.length + " scenarios \u00b7 about " + est + "\u2013" + (est+4) + " minutes";
   $("scCount").textContent = SCENARIOS.length;
@@ -357,7 +379,7 @@
   $("skipDemo").addEventListener("click", () => { demo.gender=""; demo.drawn=[]; demo.exp=null; startAssess(); });
 
   function startAssess(){
-    order = shuffle(SCENARIOS);
+    order = buildOrder();
     answers = new Array(order.length).fill(null);
     idx = 0; buildDots(); show("assess"); renderQuestion(false);
   }
@@ -484,7 +506,7 @@
     const a=document.createElement("a"); a.href=url; a.download="assessment-summary.txt";
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   });
-  $("restartBtn").addEventListener("click", ()=>{ order=shuffle(SCENARIOS); answers=new Array(order.length).fill(null); idx=0; show("assess"); renderQuestion(false); });
+  $("restartBtn").addEventListener("click", ()=>{ order=buildOrder(); answers=new Array(order.length).fill(null); idx=0; show("assess"); renderQuestion(false); });
 
 })();
 </script>
