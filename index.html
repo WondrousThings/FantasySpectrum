@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spectrum — a private interest inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#F5F4F7; --ink:#1C1A22; --ink-soft:#5F5A68; --ink-faint:#9E98A8;
+    --line:#E5E2EA; --card:#FFFFFF;
+    --c1:#8A7FA6; --c2:#8E7BA8; --c3:#B07EA0; --c4:#C76F86; --c5:#C85566;
+    --shadow:0 1px 2px rgba(28,26,34,.04), 0 8px 30px rgba(28,26,34,.07);
+    --display:"Fraunces", Georgia, serif; --ui:"Space Grotesk", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{ background:radial-gradient(120% 90% at 50% -10%, #FFFFFF 0%, var(--canvas) 55%), var(--canvas);
+    color:var(--ink); font-family:var(--ui); -webkit-font-smoothing:antialiased; min-height:100vh; display:flex; flex-direction:column; }
+  .wrap{ width:100%; max-width:700px; margin:0 auto; padding:40px 24px 80px; flex:1; display:flex; flex-direction:column; }
+  .eyebrow{ font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+  h1{ font-family:var(--display); font-weight:500; font-size:42px; line-height:1.06; letter-spacing:-.01em; margin-top:10px; }
+  h2{ font-family:var(--display); font-weight:500; font-size:30px; line-height:1.1; letter-spacing:-.01em; }
+  .lede{ color:var(--ink-soft); font-size:16px; line-height:1.65; margin-top:16px; max-width:54ch; }
+  .screen{ display:none; }
+  .screen.active{ display:flex; flex-direction:column; flex:1; animation:fade .5s ease both; }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+
+  .disc{ margin-top:26px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 22px; box-shadow:var(--shadow);
+    font-size:14.5px; line-height:1.62; color:var(--ink-soft); }
+  .gate{ margin-top:24px; display:flex; align-items:flex-start; gap:12px; cursor:pointer; user-select:none; }
+  .gate input{ position:absolute; opacity:0; width:0; height:0 }
+  .box{ width:22px; height:22px; border-radius:6px; border:1.5px solid var(--ink-faint); flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center; transition:.15s; }
+  .gate input:checked + .box{ background:var(--ink); border-color:var(--ink); }
+  .box svg{ opacity:0; transition:.15s }
+  .gate input:checked + .box svg{ opacity:1 }
+  .gate span{ font-size:14.5px; line-height:1.5; color:var(--ink); }
+  .gate:focus-within .box{ outline:2px solid var(--ink); outline-offset:2px }
+
+  .btn{ font-family:var(--ui); font-weight:600; font-size:15px; cursor:pointer; border:none; border-radius:999px; padding:14px 28px;
+    background:var(--ink); color:#fff; transition:transform .12s ease, opacity .12s ease; letter-spacing:.01em; }
+  .btn:hover{ transform:translateY(-1px) } .btn:active{ transform:translateY(0) }
+  .btn:disabled{ opacity:.4; cursor:default; transform:none }
+  .btn:focus-visible{ outline:2px solid var(--ink); outline-offset:3px }
+  .btn.ghost{ background:transparent; color:var(--ink-soft); padding:14px 18px } .btn.ghost:hover{ color:var(--ink) }
+  .btn.small{ padding:10px 18px; font-size:13px }
+  .btn.line{ background:transparent; color:var(--ink); border:1px solid var(--line) } .btn.line:hover{ border-color:var(--ink) }
+  .row-actions{ margin-top:30px; display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  .cnt-line{ font-size:13px; color:var(--ink-faint) }
+
+  /* demographics */
+  .demo-intro{ margin-bottom:6px }
+  .fieldset{ margin-top:30px }
+  .fieldset > .flabel{ font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--ink); margin-bottom:12px; display:block }
+  .fieldset > .flabel .opt{ color:var(--ink-faint); font-weight:400 }
+  .pills{ display:flex; flex-wrap:wrap; gap:8px }
+  .pill{ font-family:var(--ui); font-size:14px; padding:9px 16px; border-radius:999px; border:1.5px solid var(--line);
+    background:var(--card); color:var(--ink-soft); cursor:pointer; transition:.14s; }
+  .pill:hover{ border-color:var(--ink-faint); color:var(--ink) }
+  .pill.on{ background:var(--ink); border-color:var(--ink); color:#fff }
+  .selfdesc{ margin-top:10px; width:100%; max-width:360px; background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:11px 14px; font-family:var(--ui); font-size:14px; color:var(--ink); display:none }
+  .selfdesc.show{ display:block }
+  .selfdesc:focus{ outline:2px solid var(--ink); outline-offset:1px; border-color:transparent }
+  .slider-wrap{ max-width:420px }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:99px; margin-top:6px;
+    background:linear-gradient(90deg,var(--c1),var(--c3),var(--c5)); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:#fff;
+    border:2px solid var(--ink); cursor:pointer; box-shadow:var(--shadow); }
+  input[type=range]::-moz-range-thumb{ width:24px; height:24px; border-radius:50%; background:#fff; border:2px solid var(--ink); cursor:pointer; }
+  .slider-ends{ display:flex; justify-content:space-between; margin-top:10px; font-size:12.5px; color:var(--ink-faint) }
+  .slider-cap{ margin-top:12px; font-family:var(--display); font-style:italic; font-size:16px; color:var(--ink); min-height:1.2em }
+  .demo-note{ margin-top:28px; font-size:12.5px; color:var(--ink-faint); line-height:1.55 }
+
+  /* assessment */
+  .assess{ justify-content:center }
+  .progress{ display:flex; align-items:center; gap:14px; margin-bottom:auto; padding-top:8px }
+  .track{ flex:1; height:4px; background:var(--line); border-radius:99px; overflow:hidden }
+  .track .fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--c1),var(--c3),var(--c5)); transition:width .4s cubic-bezier(.2,.7,.2,1) }
+  .counter{ font-size:13px; color:var(--ink-faint); font-variant-numeric:tabular-nums; letter-spacing:.04em; white-space:nowrap }
+  .qstage{ flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:32px 0 }
+  .qkicker{ font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; margin-bottom:24px }
+  .prompt{ font-family:var(--display); font-weight:500; font-size:31px; line-height:1.25; letter-spacing:-.01em; max-width:22ch; margin:0 auto; }
+  .prompt.swap{ animation:promptIn .4s cubic-bezier(.2,.7,.2,1) both }
+  @keyframes promptIn{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+  .scale{ margin-top:46px }
+  .dots{ display:flex; justify-content:center; gap:12px }
+  .dot{ --c:var(--ink); width:60px; height:60px; border-radius:50%; cursor:pointer; border:1.5px solid var(--line);
+    background:var(--card); font-family:var(--ui); font-weight:600; font-size:20px; color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums;
+    transition:transform .14s ease, box-shadow .18s ease, color .14s, border-color .14s, background .14s; }
+  .dot:hover{ transform:translateY(-3px); border-color:var(--c); color:var(--c); box-shadow:0 8px 20px color-mix(in srgb, var(--c) 24%, transparent) }
+  .dot:focus-visible{ outline:2px solid var(--c); outline-offset:3px }
+  .dot.chosen{ background:var(--c); border-color:var(--c); color:#fff; transform:translateY(-3px) }
+  .scale-ends{ display:flex; justify-content:space-between; margin-top:16px; padding:0 4px }
+  .scale-ends span{ font-size:12.5px; color:var(--ink-faint); max-width:15ch }
+  .scale-ends .r{ text-align:right }
+  .legend-toggle{ display:block; margin:20px auto 0; background:none; border:none; font-family:var(--ui); font-size:12.5px; color:var(--ink-faint); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .legend-toggle:hover{ color:var(--ink) }
+  .legend{ display:none; margin:14px auto 0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); text-align:left; max-width:460px; }
+  .legend.show{ display:block; animation:fade .3s ease both }
+  .legend .lrow{ display:flex; gap:12px; align-items:flex-start; font-size:13px; line-height:1.45; }
+  .legend .lrow + .lrow{ margin-top:10px; padding-top:10px; border-top:1px solid var(--line) }
+  .legend .lnum{ width:22px; height:22px; border-radius:6px; color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0 }
+  .legend .ltext b{ display:block; font-weight:600; margin-bottom:2px; color:var(--ink) }
+  .legend .ltext span{ color:var(--ink-soft) }
+  .assess-foot{ margin-top:auto; display:flex; align-items:center; justify-content:space-between; padding-top:20px }
+  .keyhint{ font-size:12px; color:var(--ink-faint) }
+  .keyhint kbd{ font-family:var(--ui); background:var(--card); border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:11px; color:var(--ink-soft) }
+
+  /* results */
+  .res-head{ margin-bottom:8px }
+  .stat-row{ display:flex; gap:28px; margin-top:20px; flex-wrap:wrap; align-items:flex-end }
+  .stat .n{ font-family:var(--display); font-size:34px; font-weight:500; line-height:1 }
+  .stat .k{ font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; margin-top:8px }
+  .distro{ display:flex; align-items:flex-end; gap:8px; height:64px; margin-left:auto }
+  .bar{ width:26px; border-radius:6px 6px 3px 3px; min-height:4px; position:relative; transition:height .6s cubic-bezier(.2,.7,.2,1) }
+  .bar b{ position:absolute; bottom:-20px; left:0; right:0; text-align:center; font-size:11px; color:var(--ink-faint); font-weight:600 }
+
+  .export-card{ margin-top:40px; background:linear-gradient(180deg,#FFFFFF,#FBFAFD); border:1px solid var(--line); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow); }
+  .export-card h3{ font-family:var(--display); font-weight:500; font-size:20px }
+  .export-card p{ color:var(--ink-soft); font-size:14px; line-height:1.6; margin-top:8px; max-width:54ch }
+  .export-actions{ margin-top:18px; display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+  .toast{ font-size:13px; color:var(--c3); font-weight:600; opacity:0; transition:opacity .3s; margin-left:4px } .toast.show{ opacity:1 }
+
+  .bands{ margin-top:40px; display:flex; flex-direction:column; gap:16px }
+  .band{ background:var(--card); border:1px solid var(--line); border-left-width:4px; border-radius:14px; padding:20px 22px; box-shadow:var(--shadow); opacity:0; animation:bandIn .5s ease forwards }
+  @keyframes bandIn{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+  .band-head{ display:flex; align-items:center; gap:14px }
+  .chip{ width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:17px; flex-shrink:0 }
+  .band-title{ font-weight:600; font-size:15px } .band-title .cnt{ color:var(--ink-faint); font-weight:500 }
+  .band-note{ color:var(--ink-soft); font-size:13.5px; line-height:1.55; margin-top:12px; font-style:italic; font-family:var(--display) }
+  .band ul{ list-style:none; margin-top:16px; display:flex; flex-direction:column; gap:10px }
+  .band li{ font-size:15px; line-height:1.45; padding-left:16px; position:relative }
+  .band li::before{ content:""; position:absolute; left:0; top:9px; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.5 }
+  .band.empty{ opacity:.5 } .band.empty .band-note{ display:none }
+  .empty-line{ color:var(--ink-faint); font-size:13.5px; margin-top:10px }
+  .res-actions{ margin-top:34px; display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+  .fine{ margin-top:30px; font-size:12px; color:var(--ink-faint); line-height:1.6; text-align:center }
+
+  @media (max-width:560px){
+    h1{ font-size:34px } h2{ font-size:26px } .prompt{ font-size:25px }
+    .dot{ width:52px; height:52px; font-size:18px }
+    .distro{ width:100%; margin-left:0; margin-top:16px }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- GATE / WELCOME -->
+  <section id="gate" class="screen active">
+    <div class="eyebrow">A private interest inventory</div>
+    <h1>Spectrum</h1>
+    <p class="lede">You'll read a series of scenarios, one at a time, and rate how much each one appeals to you &mdash; from <em>not interested</em> to <em>maximum interest</em>. There are no right answers and nothing to explain. At the end, everything sorts by how it landed, and you can take a private summary anywhere you like.</p>
+
+    <div class="disc">
+      Everyone in every scenario here is a consenting adult, and this is a private space to explore your own interests &mdash; there are no right answers. A few scenarios describe intense or higher-risk activities; strong interest in those is simply information about you, and anything you'd actually explore is worth learning to do safely and talking through openly with a partner. Nothing you enter ever leaves this device.
+    </div>
+
+    <label class="gate">
+      <input type="checkbox" id="ageCheck">
+      <span class="box"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 7L5 11L12 2" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>I confirm I'm 18 or older, or of legal age where I live.</span>
+    </label>
+
+    <div class="row-actions">
+      <button class="btn" id="beginBtn" disabled>Begin</button>
+      <span class="cnt-line" id="cntLine"></span>
+    </div>
+  </section>
+
+  <!-- DEMOGRAPHICS -->
+  <section id="demo" class="screen">
+    <div class="demo-intro">
+      <div class="eyebrow">Before we start</div>
+      <h2>A little context (optional)</h2>
+      <p class="lede">None of this is required, and it stays on your device like everything else. It just helps make the summary at the end more personal if you choose to read one.</p>
+    </div>
+
+    <div class="fieldset">
+      <span class="flabel">Gender identity <span class="opt">&mdash; optional</span></span>
+      <div class="pills" id="genderPills" data-single="1">
+        <button class="pill" data-v="Woman">Woman</button>
+        <button class="pill" data-v="Man">Man</button>
+        <button class="pill" data-v="Non-binary">Non-binary</button>
+        <button class="pill" data-v="Genderfluid / genderqueer">Genderfluid / genderqueer</button>
+        <button class="pill" data-v="__self">Self-describe</button>
+        <button class="pill" data-v="Prefer not to say">Prefer not to say</button>
+      </div>
+      <input class="selfdesc" id="genderSelf" type="text" placeholder="How would you describe it?" maxlength="60">
+    </div>
+
+    <div class="fieldset">
+      <span class="flabel">Who are you drawn to? <span class="opt">&mdash; optional, choose any</span></span>
+      <div class="pills" id="drawnPills">
+        <button class="pill" data-v="Women">Women</button>
+        <button class="pill" data-v="Men">Men</button>
+        <button class="pill" data-v="Non-binary people">Non-binary people</button>
+        <button class="pill" data-v="Everyone">Everyone</button>
+        <button class="pill" data-v="Still figuring it out">Still figuring it out</button>
+      </div>
+    </div>
+
+    <div class="fieldset">
+      <span class="flabel">Experience &amp; openness <span class="opt">&mdash; optional</span></span>
+      <div class="slider-wrap">
+        <input type="range" id="expSlider" min="1" max="5" step="1" value="3">
+        <div class="slider-ends"><span>New &amp; curious</span><span>Very experienced</span></div>
+        <div class="slider-cap" id="expCap"></div>
+      </div>
+    </div>
+
+    <div class="row-actions">
+      <button class="btn" id="toAssess">Continue</button>
+      <button class="btn ghost small" id="skipDemo">Skip</button>
+    </div>
+    <div class="demo-note">You can leave any of this blank. It's used only to add context to your private summary.</div>
+  </section>
+
+  <!-- ASSESSMENT -->
+  <section id="assess" class="screen assess">
+    <div class="progress">
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <div class="counter" id="counter">1 / 1</div>
+    </div>
+    <div class="qstage">
+      <div class="qkicker">How much does this appeal to you?</div>
+      <div class="prompt" id="promptText">&mdash;</div>
+      <div class="scale">
+        <div class="dots" id="dots"></div>
+        <div class="scale-ends"><span class="l" id="endLow">Not interested</span><span class="r" id="endHigh">Maximum interest</span></div>
+        <button class="legend-toggle" id="legendToggle" type="button">What do the numbers mean?</button>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="assess-foot">
+      <button class="btn ghost small" id="backBtn">&larr; Back</button>
+      <span class="keyhint">Press <kbd>1</kbd>&ndash;<kbd>5</kbd> or click</span>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="screen">
+    <div class="res-head"><div class="eyebrow">Your spectrum</div><h1>How it sorted out</h1></div>
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="statTotal">0</div><div class="k">Scenarios</div></div>
+      <div class="stat"><div class="n" id="statAvg">0.0</div><div class="k">Average</div></div>
+      <div class="stat"><div class="n" id="statTop">&mdash;</div><div class="k">Most common</div></div>
+      <div class="distro" id="distro"></div>
+    </div>
+
+    <div class="export-card">
+      <h3>Go deeper</h3>
+      <p>Your responses never leave your device unless you choose to share them. For a private analysis of your <span id="scCount">164</span> scenario responses, you can copy/save an anonymized summary of your ratings &mdash; with a built-in interpretive guide attached to each scenario &mdash; to paste into the AI assistant of your choice for deeper insights. The copied/saved document is specifically crafted to keep your identity anonymous when you share it with your AI assistant (the AI platform will think it is reading about a random person and won't know it's reading about you). You are the only person who will know that your AI's analysis is specific to you.</p>
+      <div class="export-actions">
+        <button class="btn" id="copyBtn">Copy Results</button>
+        <button class="btn line small" id="downloadBtn">Download Results</button>
+        <span class="toast" id="toast">Copied</span>
+      </div>
+    </div>
+
+    <div class="bands" id="bands"></div>
+
+    <div class="res-actions">
+      <button class="btn line small" id="restartBtn">Take it again</button>
+    </div>
+    <div class="fine">Nothing here is stored. Refreshing or closing the page clears everything.</div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const SCENARIOS = [{"t": "Kissing", "th": "Affection & Intimacy", "gr": "", "n": "Baseline affection; anchors the low end."}, {"t": "French kissing", "th": "Affection & Intimacy", "gr": "", "n": "Passionate oral affection."}, {"t": "Hugging with clothes on", "th": "Affection & Intimacy", "gr": "", "n": "Non-sexual closeness; need for tender contact."}, {"t": "Holding each other naked", "th": "Affection & Intimacy", "gr": "", "n": "Skin closeness and vulnerability without sex as the goal."}, {"t": "Long hot baths together", "th": "Affection & Intimacy", "gr": "", "n": "Shared, unhurried relaxation."}, {"t": "Washing each other's hair", "th": "Affection & Intimacy", "gr": "", "n": "Caretaking intimacy."}, {"t": "Holding each other's face", "th": "Affection & Intimacy", "gr": "", "n": "Tender focus and eye contact."}, {"t": "Rubbing each other's ears", "th": "Affection & Intimacy", "gr": "", "n": "Gentle sensory affection."}, {"t": "Touching thighs", "th": "Affection & Intimacy", "gr": "", "n": "Building physical anticipation."}, {"t": "Making love for hours", "th": "Affection & Intimacy", "gr": "", "n": "Endurance and immersion; the slow-pacing pole."}, {"t": "A slow, sensual full-body oil massage", "th": "Affection & Intimacy", "gr": "", "n": "Broadens sensual touch beyond the feet."}, {"t": "Tantric breathing", "th": "Slow / Tantric Connection", "gr": "", "n": "Synchronized breath; spiritual eroticism."}, {"t": "Rocking and yab-yum breathing", "th": "Slow / Tantric Connection", "gr": "", "n": "Tantric position and breathwork."}, {"t": "Left-eye gazing", "th": "Slow / Tantric Connection", "gr": "", "n": "Sustained eye-contact practice."}, {"t": "Making love in water", "th": "Setting & Circumstance", "gr": "", "n": "Aquatic setting."}, {"t": "Sex in the shower", "th": "Setting & Circumstance", "gr": "", "n": "Water, standing, spontaneity."}, {"t": "Sex in the morning", "th": "Setting & Circumstance", "gr": "", "n": "Timing preference."}, {"t": "Daytime lovemaking", "th": "Setting & Circumstance", "gr": "", "n": "Lit, unhidden sex."}, {"t": "Eyes-wide-open sex", "th": "Setting & Circumstance", "gr": "", "n": "Visual connection and vulnerability."}, {"t": "Sex on the floor", "th": "Setting & Circumstance", "gr": "", "n": "Spontaneity / location novelty."}, {"t": "Sex on a chair", "th": "Setting & Circumstance", "gr": "", "n": "Furniture and position."}, {"t": "Sex outside or in public places", "th": "Setting & Circumstance", "gr": "", "n": "Public risk (also reads as exhibitionism)."}, {"t": "Rose petals on the bed", "th": "Setting & Circumstance", "gr": "", "n": "Romance staging."}, {"t": "A spontaneous, urgent 'quickie'", "th": "Setting & Circumstance", "gr": "", "n": "Pacing signal; the counterweight to slow lovemaking."}, {"t": "Passionate make-up sex after a fight", "th": "Setting & Circumstance", "gr": "", "n": "Emotional-context dimension; charge from conflict."}, {"t": "Sex in a car or other semi-private spot", "th": "Setting & Circumstance", "gr": "", "n": "Semi-public middle ground between home and fully public."}, {"t": "Dressing up in leather", "th": "Dress & Costume", "gr": "", "n": "Fetish material / aesthetic."}, {"t": "Dressing up in latex / plastic", "th": "Dress & Costume", "gr": "", "n": "Fetish material."}, {"t": "Dressing in lingerie", "th": "Dress & Costume", "gr": "", "n": "Eroticized clothing."}, {"t": "Wearing stockings", "th": "Dress & Costume", "gr": "", "n": "Hosiery aesthetic."}, {"t": "Sex while partly dressed in street clothes (jeans and shoes still on)", "th": "Dress & Costume", "gr": "", "n": "Clothed / urgency kink; being 'caught' half-dressed."}, {"t": "A man dressing in women's clothes", "th": "Dress & Costume", "gr": "", "n": "Crossdressing / gender play."}, {"t": "Watching two women have sex", "th": "Voyeurism", "gr": "", "n": "Observing F/F."}, {"t": "Watching two men have sex", "th": "Voyeurism", "gr": "", "n": "Observing M/M."}, {"t": "Watching couples have sex", "th": "Voyeurism", "gr": "", "n": "Observing others."}, {"t": "Watching a woman masturbate", "th": "Voyeurism", "gr": "", "n": "Solo observation."}, {"t": "Watching a man masturbate", "th": "Voyeurism", "gr": "", "n": "Solo observation."}, {"t": "Watching pornography with a partner", "th": "Voyeurism", "gr": "", "n": "Shared media."}, {"t": "Watching pornography alone", "th": "Voyeurism", "gr": "", "n": "Private media."}, {"t": "Stripping in front of a room of people", "th": "Exhibitionism", "gr": "Give", "n": "Public display."}, {"t": "Being filmed during sex", "th": "Exhibitionism", "gr": "", "n": "Recorded / watched later."}, {"t": "Masturbating in front of your partner", "th": "Exhibitionism", "gr": "Give", "n": "Solo for a trusted audience."}, {"t": "Masturbating in front of someone else's partner", "th": "Exhibitionism", "gr": "Give", "n": "Solo before a non-partner; taboo edge."}, {"t": "Sex in front of your partner with someone else", "th": "Exhibitionism", "gr": "", "n": "Watched by partner while with another (cuckold/hotwife)."}, {"t": "Being watched on a live video call (camming)", "th": "Exhibitionism", "gr": "Give", "n": "Extends exhibitionism into the digital."}, {"t": "Threesome with two women", "th": "Multiple Partners & Group", "gr": "", "n": "MFF configuration."}, {"t": "Threesome with two men", "th": "Multiple Partners & Group", "gr": "", "n": "Two-male configuration."}, {"t": "Threesome with a man and a woman", "th": "Multiple Partners & Group", "gr": "", "n": "Mixed threesome."}, {"t": "Sex with your partner and another couple", "th": "Multiple Partners & Group", "gr": "", "n": "Foursome / swinging."}, {"t": "Group sex", "th": "Multiple Partners & Group", "gr": "", "n": "Four or more."}, {"t": "Sex with a group of men (with ejaculation)", "th": "Multiple Partners & Group", "gr": "Receive", "n": "Group + fluid focus; intense variant."}, {"t": "Being seduced by a couple", "th": "Multiple Partners & Group", "gr": "Receive", "n": "Pursued by an established pair."}, {"t": "Sex with someone else, openly and with your partner's blessing", "th": "Open / Non-Monogamy", "gr": "", "n": "Consensual non-monogamy frame."}, {"t": "Sharing or swapping your partner with others", "th": "Open / Non-Monogamy", "gr": "", "n": "Compersion or cuckold dynamic (also a power theme)."}, {"t": "Having a secret affair, hidden from your partner", "th": "Infidelity", "gr": "", "n": "Secrecy / betrayal charge."}, {"t": "Sex with a friend or acquaintance outside your relationship", "th": "Infidelity", "gr": "", "n": "Interpretation depends on relationship structure (see demographics)."}, {"t": "Sex with an anonymous stranger", "th": "Novel Partners", "gr": "", "n": "Anonymity."}, {"t": "Kissing a stranger", "th": "Novel Partners", "gr": "", "n": "Low-stakes novelty."}, {"t": "Sex with a celebrity", "th": "Novel Partners", "gr": "", "n": "Fantasy figure."}, {"t": "Sex with an ex", "th": "Novel Partners", "gr": "", "n": "Nostalgia / unfinished business."}, {"t": "Sex with a call girl or stripper", "th": "Novel Partners", "gr": "", "n": "Transactional encounter."}, {"t": "Sex with a transgender person", "th": "Novel Partners", "gr": "", "n": "Partner-type / orientation."}, {"t": "Sex with a woman", "th": "Same-Sex Exploration", "gr": "", "n": "Signal depends on the respondent's orientation."}, {"t": "Sex with a man", "th": "Same-Sex Exploration", "gr": "", "n": "Signal depends on the respondent's orientation."}, {"t": "Being seduced by an older woman", "th": "Age-Gap & Seduction", "gr": "Receive", "n": "Age-gap; adult power/experience dynamic."}, {"t": "Being seduced by an older man", "th": "Age-Gap & Seduction", "gr": "Receive", "n": "Age-gap dynamic."}, {"t": "Being seduced by a younger (adult) woman", "th": "Age-Gap & Seduction", "gr": "Receive", "n": "Age-gap; younger adult."}, {"t": "Being seduced by a younger (adult) man", "th": "Age-Gap & Seduction", "gr": "Receive", "n": "Age-gap; younger adult."}, {"t": "Seducing a younger (adult) woman", "th": "Age-Gap & Seduction", "gr": "Give", "n": "Active role, age-gap."}, {"t": "Seducing a younger (adult) man", "th": "Age-Gap & Seduction", "gr": "Give", "n": "Active role, age-gap."}, {"t": "Seducing a couple", "th": "Age-Gap & Seduction", "gr": "Give", "n": "Pursuing an established pair."}, {"t": "Receiving oral sex", "th": "Oral", "gr": "Receive", "n": "Core oral act."}, {"t": "Giving oral sex", "th": "Oral", "gr": "Give", "n": "Core oral act."}, {"t": "Kissing after fellatio", "th": "Oral", "gr": "", "n": "Comfort with fluids / taboo."}, {"t": "Kissing after cunnilingus", "th": "Oral", "gr": "", "n": "Comfort with fluids / taboo."}, {"t": "A partner swallowing after fellatio", "th": "Oral", "gr": "", "n": "Fluid comfort / completion."}, {"t": "Ejaculating on a partner's face", "th": "Oral", "gr": "Give", "n": "Marking / dominance overtone."}, {"t": "Analingus (oral-anal)", "th": "Oral", "gr": "", "n": "Taboo oral play."}, {"t": "Kissing after analingus", "th": "Oral", "gr": "", "n": "Comfort with taboo."}, {"t": "Giving anal penetration (penis)", "th": "Anal", "gr": "Give", "n": "Penetrative / active."}, {"t": "Receiving anal penetration (penis)", "th": "Anal", "gr": "Receive", "n": "Receptive."}, {"t": "Giving anal penetration (fingers)", "th": "Anal", "gr": "Give", "n": "Lighter entry."}, {"t": "Receiving anal penetration (fingers)", "th": "Anal", "gr": "Receive", "n": "Lighter entry."}, {"t": "Giving anal penetration (toy)", "th": "Anal", "gr": "Give", "n": "Device-assisted."}, {"t": "Receiving anal penetration (toy)", "th": "Anal", "gr": "Receive", "n": "Device-assisted."}, {"t": "External anal stimulation", "th": "Anal", "gr": "Receive", "n": "Gentlest entry point."}, {"t": "Pegging (a woman penetrating a man with a strap-on)", "th": "Anal", "gr": "", "n": "Distinct gendered dynamic + power overtone."}, {"t": "Giving anal fisting", "th": "Anal / Edge", "gr": "Give", "n": "Intense / advanced; higher-risk."}, {"t": "Receiving anal fisting", "th": "Anal / Edge", "gr": "Receive", "n": "Intense / advanced; higher-risk."}, {"t": "Doggy-style", "th": "Intercourse Variations", "gr": "", "n": "Position preference."}, {"t": "Double penetration (two partners)", "th": "Intercourse Variations", "gr": "Receive", "n": "Simultaneous, multi-partner."}, {"t": "Double anal", "th": "Intercourse Variations / Edge", "gr": "Receive", "n": "Intense variant; higher-risk."}, {"t": "Using a vibrator on yourself", "th": "Toys & Devices", "gr": "", "n": "Solo device use."}, {"t": "Using a vibrator with a partner", "th": "Toys & Devices", "gr": "", "n": "Partnered device use."}, {"t": "Masturbating with toys in front of a partner", "th": "Toys & Devices", "gr": "Give", "n": "Toys + exhibition."}, {"t": "Mutual masturbation together", "th": "Toys & Devices", "gr": "", "n": "Bridges solo and partnered; no prior entry."}, {"t": "Being dominated by a woman", "th": "Dominance & Submission", "gr": "Receive", "n": "Female-dom dynamic."}, {"t": "Being dominated by a man", "th": "Dominance & Submission", "gr": "Receive", "n": "Male-dom dynamic."}, {"t": "Being dominant with a woman", "th": "Dominance & Submission", "gr": "Give", "n": "Taking control."}, {"t": "Dominating a man", "th": "Dominance & Submission", "gr": "Give", "n": "Taking control."}, {"t": "Playing the 'Master' role", "th": "Dominance & Submission", "gr": "Give", "n": "Structured authority."}, {"t": "Playing the 'submissive' role", "th": "Dominance & Submission", "gr": "Receive", "n": "Structured surrender."}, {"t": "Submitting and thanking a partner", "th": "Dominance & Submission", "gr": "Receive", "n": "Ritualized submission."}, {"t": "Being dominated by your partner in front of others", "th": "Dominance & Submission", "gr": "Receive", "n": "Power + exposure."}, {"t": "Putting a collar on a partner", "th": "Dominance & Submission", "gr": "Give", "n": "Ownership symbol."}, {"t": "Wearing a collar", "th": "Dominance & Submission", "gr": "Receive", "n": "Ownership symbol."}, {"t": "Orgasm denial / prolonged edging", "th": "Dominance & Submission", "gr": "", "n": "Control axis; a major missing theme."}, {"t": "Being kept going past orgasm (overstimulation)", "th": "Dominance & Submission", "gr": "Receive", "n": "The mirror image of edging."}, {"t": "Chastity / extended orgasm denial (device or agreement)", "th": "Dominance & Submission", "gr": "", "n": "Deepens the control axis over time."}, {"t": "Body worship — giving or receiving adoration of the body", "th": "Dominance & Submission", "gr": "", "n": "A core D/s flavor."}, {"t": "Being verbally praised during sex", "th": "Dominance & Submission", "gr": "", "n": "The affirmation pole of verbal play."}, {"t": "Being verbally degraded within agreed limits", "th": "Dominance & Submission", "gr": "", "n": "The opposite pole; strong D/s discriminator."}, {"t": "Aftercare — being held and soothed after intense play", "th": "Dominance & Submission", "gr": "", "n": "Reveals need for tenderness after intensity."}, {"t": "Tying up a partner", "th": "Bondage & Restraint", "gr": "Give", "n": "Restraining another (gender-neutral baseline)."}, {"t": "Being tied up", "th": "Bondage & Restraint", "gr": "Receive", "n": "Being restrained."}, {"t": "Tying up a woman and having sex with her", "th": "Bondage & Restraint", "gr": "Give", "n": "Gender of the restrained partner IS the signal here."}, {"t": "Tying up a man and having sex with him", "th": "Bondage & Restraint", "gr": "Give", "n": "Gender of the restrained partner IS the signal here."}, {"t": "Handcuffing a partner", "th": "Bondage & Restraint", "gr": "Give", "n": "Device restraint."}, {"t": "Wearing handcuffs", "th": "Bondage & Restraint", "gr": "Receive", "n": "Device restraint."}, {"t": "Being strapped down", "th": "Bondage & Restraint", "gr": "Receive", "n": "Full immobilization."}, {"t": "Being tied to furniture", "th": "Bondage & Restraint", "gr": "Receive", "n": "Positional restraint."}, {"t": "Being suspended", "th": "Bondage & Restraint", "gr": "Receive", "n": "Rope suspension; higher-risk."}, {"t": "Being gagged", "th": "Bondage & Restraint", "gr": "Receive", "n": "Silencing / helplessness."}, {"t": "Blindfolding a partner", "th": "Bondage & Restraint", "gr": "Give", "n": "Sensory control."}, {"t": "Being blindfolded", "th": "Bondage & Restraint", "gr": "Receive", "n": "Sensory surrender."}, {"t": "Spanking / being spanked", "th": "Impact & Sensation", "gr": "", "n": "Entry-level impact."}, {"t": "Being caned or whipped", "th": "Impact & Sensation", "gr": "Receive", "n": "Sharper impact."}, {"t": "Using a cane, crop or whip to strike", "th": "Impact & Sensation", "gr": "Give", "n": "Delivering impact."}, {"t": "Using a cane, crop or whip to threaten (no strike)", "th": "Impact & Sensation", "gr": "Give", "n": "Anticipation / fear-play, not contact."}, {"t": "Having hair pulled", "th": "Impact & Sensation", "gr": "Receive", "n": "Control + sensation."}, {"t": "Being pinched with clothespins / clips", "th": "Impact & Sensation", "gr": "Receive", "n": "Pinch sensation."}, {"t": "Pinching a partner with clothespins / clips", "th": "Impact & Sensation", "gr": "Give", "n": "Pinch sensation."}, {"t": "Nipple play / clamps", "th": "Impact & Sensation", "gr": "", "n": "Distinct from improvised clothespins."}, {"t": "Hot candle wax on skin", "th": "Impact & Sensation", "gr": "", "n": "Temperature play."}, {"t": "Light sensory play — feathers, ice, textures", "th": "Impact & Sensation", "gr": "", "n": "Fills the gap before wax/impact."}, {"t": "Biting / being bitten", "th": "Impact & Sensation", "gr": "", "n": "A missing register of sensation."}, {"t": "Having toes sucked", "th": "Foot & Footwear", "gr": "Receive", "n": "Foot-focused oral."}, {"t": "Sex involving feet (yours or a partner's)", "th": "Foot & Footwear", "gr": "", "n": "Foot focus."}, {"t": "Having a partner lick your boots", "th": "Foot & Footwear", "gr": "Receive", "n": "Boot / degradation ritual (foot + D/s)."}, {"t": "Wearing boots or high heels", "th": "Foot & Footwear", "gr": "", "n": "Footwear aesthetic."}, {"t": "Foot massage", "th": "Foot & Footwear", "gr": "", "n": "Caretaking touch with a foot focus."}, {"t": "Being choked / breath play", "th": "Edge Play (higher-risk)", "gr": "", "n": "Restricting breath; genuine physical risk."}, {"t": "Electricity play", "th": "Edge Play (higher-risk)", "gr": "", "n": "E-stim sensation; real risk."}, {"t": "Knife play", "th": "Edge Play (higher-risk)", "gr": "", "n": "Blade / fear-play; real risk."}, {"t": "Bull whipping", "th": "Edge Play (higher-risk)", "gr": "Receive", "n": "Heavy impact; real risk."}, {"t": "Punching / being punched", "th": "Edge Play (higher-risk)", "gr": "", "n": "Heavy blunt force; real risk."}, {"t": "Kicking / being kicked", "th": "Edge Play (higher-risk)", "gr": "", "n": "Heavy blunt force; real risk."}, {"t": "Face slapping", "th": "Edge Play (higher-risk)", "gr": "", "n": "Impact + humiliation."}, {"t": "Playfully overpowering a willing partner (a 'ravishment' role-play)", "th": "Consensual Non-Consent (role-play)", "gr": "Give", "n": "Negotiated force fantasy, fully consensual."}, {"t": "Overpowering a willing woman in a role-play scene", "th": "Consensual Non-Consent (role-play)", "gr": "Give", "n": "Negotiated force fantasy."}, {"t": "Overpowering a willing man in a role-play scene", "th": "Consensual Non-Consent (role-play)", "gr": "Give", "n": "Negotiated force fantasy."}, {"t": "Being playfully overpowered by a trusted partner (a surrender fantasy)", "th": "Consensual Non-Consent (role-play)", "gr": "Receive", "n": "Negotiated surrender fantasy."}, {"t": "Surrendering to a group in a consensual 'taken' role-play", "th": "Consensual Non-Consent (role-play)", "gr": "Receive", "n": "Surrender + group, negotiated."}, {"t": "Urinating on / being urinated on by a partner", "th": "Watersports", "gr": "", "n": "Golden-shower play."}, {"t": "Sex with food (e.g. whipped cream)", "th": "Food Play", "gr": "", "n": "Edible / messy play."}, {"t": "Sex with fruit or vegetables", "th": "Food Play", "gr": "", "n": "Improvised objects."}, {"t": "Throwing food on each other", "th": "Food Play", "gr": "", "n": "Messy, playful."}, {"t": "Role-play with costumes (stripper, cowboy, etc.)", "th": "Role-play & Scenario", "gr": "", "n": "Character / narrative play."}, {"t": "Doctor / medical fantasies", "th": "Role-play & Scenario", "gr": "", "n": "Clinical power scenario."}, {"t": "Adult 'school' role-play (e.g. college / teacher-student, all adults)", "th": "Role-play & Scenario", "gr": "", "n": "Authority / age-gap scenario."}, {"t": "Authority-figure role-play (boss, officer — all adult)", "th": "Role-play & Scenario", "gr": "", "n": "Broadens role-play past doctor/school."}, {"t": "Acting out pornography scenes", "th": "Role-play & Scenario", "gr": "", "n": "Enacting scripted media."}, {"t": "Talking dirty", "th": "Verbal", "gr": "", "n": "Erotic language."}, {"t": "Sexting — exchanging explicit photos or messages", "th": "Verbal", "gr": "", "n": "Adds a digital dimension the list lacked."}];
+
+  const COLORS = { 1:"--c1", 2:"--c2", 3:"--c3", 4:"--c4", 5:"--c5" };
+  const cvar = n => getComputedStyle(document.documentElement).getPropertyValue(COLORS[n]).trim();
+
+  /* ============================================================
+     SCALE DEFINITIONS  —  EDIT HERE
+     ------------------------------------------------------------
+     What each number 1-5 means. Change the wording freely.
+       short = the label shown on the questionnaire scale
+       full  = the fuller meaning, shown in the "what do the
+               numbers mean?" panel, in your results, and in the
+               AI summary export.
+     Keep the quotes and the commas exactly as they are.
+     ============================================================ */
+  const SCALE = {
+    1: { short:"Not at all",           full:"Not at all excited by or interested in it." },
+    2: { short:"Slight interest",      full:"Holds almost no \u2014 or only some \u2014 interest for you." },
+    3: { short:"Erotically curious",   full:"You're somewhat, or very, erotically curious about it." },
+    4: { short:"I fantasize about it", full:"You have \u2014 or easily could have \u2014 fantasies about it now." },
+    5: { short:"Want to act on it",    full:"You want to take the fantasy into action." }
+  };
+  /* ====================== END SCALE BLOCK ===================== */
+  const EXP_CAP = {1:"New & curious", 2:"A little experience", 3:"Somewhat experienced", 4:"Experienced", 5:"Very experienced"};
+
+  let order=[], answers=[], idx=0;
+  const demo = { gender:"", genderSelf:"", drawn:[], exp:null };
+
+  const $ = id => document.getElementById(id);
+  const screens = { gate:$("gate"), demo:$("demo"), assess:$("assess"), results:$("results") };
+  function show(name){ Object.values(screens).forEach(s=>s.classList.remove("active")); screens[name].classList.add("active"); window.scrollTo({top:0,behavior:"smooth"}); }
+  function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function shuffle(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; } return r; }
+
+  const est = Math.round(SCENARIOS.length*0.09);
+  $("cntLine").textContent = SCENARIOS.length + " scenarios \u00b7 about " + est + "\u2013" + (est+4) + " minutes";
+  $("scCount").textContent = SCENARIOS.length;
+
+  // scale ends + legend, all driven by the SCALE block above
+  $("endLow").textContent = SCALE[1].short;
+  $("endHigh").textContent = SCALE[5].short;
+  $("legend").innerHTML = [1,2,3,4,5].map(n =>
+    '<div class="lrow"><div class="lnum" style="background:'+cvar(n)+'">'+n+'</div>'+
+    '<div class="ltext"><b>'+SCALE[n].short+'</b><span>'+SCALE[n].full+'</span></div></div>'
+  ).join("");
+  $("legendToggle").addEventListener("click", ()=>{
+    const el=$("legend"); el.classList.toggle("show");
+    $("legendToggle").textContent = el.classList.contains("show") ? "Hide the scale" : "What do the numbers mean?";
+  });
+
+  // ---- gate ----
+  $("ageCheck").addEventListener("change", e => { $("beginBtn").disabled = !e.target.checked; });
+  $("beginBtn").addEventListener("click", () => { if($("ageCheck").checked) show("demo"); });
+
+  // ---- demographics ----
+  $("genderPills").addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if(!b) return;
+    [...$("genderPills").children].forEach(p=>p.classList.remove("on"));
+    b.classList.add("on");
+    const v = b.getAttribute("data-v");
+    if(v === "__self"){ $("genderSelf").classList.add("show"); $("genderSelf").focus(); demo.gender="__self"; }
+    else { $("genderSelf").classList.remove("show"); demo.gender=v; }
+  });
+  $("genderSelf").addEventListener("input", e => { demo.genderSelf = e.target.value; });
+  $("drawnPills").addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if(!b) return;
+    b.classList.toggle("on");
+    const v = b.getAttribute("data-v");
+    if(b.classList.contains("on")) demo.drawn.push(v); else demo.drawn = demo.drawn.filter(x=>x!==v);
+  });
+  const expSlider = $("expSlider");
+  function updateExpCap(){ $("expCap").textContent = EXP_CAP[expSlider.value]; }
+  expSlider.addEventListener("input", () => { demo.exp = parseInt(expSlider.value,10); updateExpCap(); });
+  updateExpCap();
+
+  $("toAssess").addEventListener("click", startAssess);
+  $("skipDemo").addEventListener("click", () => { demo.gender=""; demo.drawn=[]; demo.exp=null; startAssess(); });
+
+  function startAssess(){
+    order = shuffle(SCENARIOS);
+    answers = new Array(order.length).fill(null);
+    idx = 0; buildDots(); show("assess"); renderQuestion(false);
+  }
+
+  // ---- assessment ----
+  function buildDots(){
+    const dots=$("dots"); dots.innerHTML="";
+    for(let n=1;n<=5;n++){
+      const b=document.createElement("button"); b.className="dot"; b.textContent=n;
+      b.style.setProperty("--c", cvar(n)); b.setAttribute("aria-label","Rate "+n);
+      b.addEventListener("click",()=>choose(n)); dots.appendChild(b);
+    }
+  }
+  function renderQuestion(animate){
+    const p=$("promptText"); p.textContent=order[idx].t;
+    if(animate){ p.classList.remove("swap"); void p.offsetWidth; p.classList.add("swap"); }
+    $("counter").textContent=(idx+1)+" / "+order.length;
+    $("fill").style.width=(idx/order.length*100)+"%";
+    const chosen=answers[idx];
+    [...$("dots").children].forEach((d,i)=>d.classList.toggle("chosen", chosen===i+1));
+    $("backBtn").style.visibility = idx===0 ? "hidden":"visible";
+  }
+  function choose(n){
+    answers[idx]=n;
+    [...$("dots").children].forEach((d,i)=>d.classList.toggle("chosen", i+1===n));
+    setTimeout(()=>{ if(idx<order.length-1){ idx++; renderQuestion(true); } else { $("fill").style.width="100%"; renderResults(); } },220);
+  }
+  $("backBtn").addEventListener("click", ()=>{ if(idx>0){ idx--; renderQuestion(true); } });
+  document.addEventListener("keydown",(e)=>{
+    if(!screens.assess.classList.contains("active")) return;
+    if(e.key>="1"&&e.key<="5"){ choose(parseInt(e.key,10)); }
+    else if(e.key==="ArrowLeft"&&idx>0){ idx--; renderQuestion(true); }
+  });
+
+  function groups(){ const g={1:[],2:[],3:[],4:[],5:[]}; order.forEach((s,i)=>{ if(answers[i]) g[answers[i]].push(s); }); return g; }
+
+  function renderResults(){
+    const g=groups(); const total=order.length;
+    const sum=answers.reduce((a,b)=>a+(b||0),0); const avg=sum/total;
+    let topN=5, topC=-1; for(let n=5;n>=1;n--){ if(g[n].length>topC){ topC=g[n].length; topN=n; } }
+    $("statTotal").textContent=total; $("statAvg").textContent=avg.toFixed(1);
+    $("statTop").textContent=g[topN].length?topN:"\u2014"; $("statTop").style.color=g[topN].length?cvar(topN):"var(--ink)";
+
+    const maxC=Math.max(1,...Object.values(g).map(x=>x.length));
+    const distro=$("distro"); distro.innerHTML="";
+    for(let n=1;n<=5;n++){
+      const bar=document.createElement("div"); bar.className="bar"; bar.style.background=cvar(n);
+      bar.style.height="4px"; bar.innerHTML="<b>"+n+"</b>"; distro.appendChild(bar);
+      const h=Math.round((g[n].length/maxC)*60)+4;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.height=h+"px"; }));
+    }
+
+    const bandsEl=$("bands"); bandsEl.innerHTML=""; let delay=0;
+    for(let n=5;n>=1;n--){
+      const items=g[n];
+      const band=document.createElement("div"); band.className="band"+(items.length?"":" empty");
+      band.style.borderLeftColor=cvar(n); band.style.animationDelay=delay+"ms"; delay+=60; band.style.color=cvar(n);
+      const list=items.length ? "<ul>"+items.map(s=>'<li style="color:var(--ink)">'+escapeHtml(s.t)+"</li>").join("")+"</ul>" : '<div class="empty-line">Nothing here.</div>';
+      band.innerHTML='<div class="band-head"><div class="chip" style="background:'+cvar(n)+'">'+n+'</div>'+
+        '<div class="band-title" style="color:var(--ink)">Rated '+n+' <span class="cnt">\u00b7 '+items.length+'</span></div></div>'+
+        (items.length?'<div class="band-note" style="color:var(--ink-soft)">'+SCALE[n].full+'</div>':'')+list;
+      bandsEl.appendChild(band);
+    }
+    show("results");
+  }
+
+  function demoLine(){
+    const parts=[];
+    let gender = demo.gender==="__self" ? (demo.genderSelf.trim()||"self-described") : demo.gender;
+    if(gender) parts.push("Gender: "+gender);
+    if(demo.drawn.length) parts.push("Drawn to: "+demo.drawn.join(", "));
+    if(demo.exp) parts.push("Experience: "+EXP_CAP[demo.exp].toLowerCase());
+    return parts.length ? parts.join(". ")+"." : "(none provided)";
+  }
+
+  function buildSummary(){
+    // group the respondent's answered items by theme
+    const byTheme = {};
+    order.forEach((s,i)=>{ const r=answers[i]; if(!r) return; (byTheme[s.th]=byTheme[s.th]||[]).push({s,r}); });
+    // order themes strongest-interest first
+    const themeList = Object.keys(byTheme).map(th=>{
+      const items=byTheme[th]; const avg=items.reduce((a,b)=>a+b.r,0)/items.length;
+      return {th, items, avg};
+    }).sort((a,b)=> b.avg-a.avg);
+
+    let out="";
+    out+="The following is one anonymous respondent's completed self-assessment of sexual interests. Each scenario was rated on a 1-5 scale of escalating engagement \u2014 a top rating means the respondent actively wants to enact the scenario, not merely that they like it.\n\n";
+    out+="What each rating means (strongest to weakest):\n";
+    for(let n=5;n>=1;n--){ out+="  \u2022 "+SCALE[n].short+" \u2014 "+SCALE[n].full+"\n"; }
+    out+="\n";
+    out+="Context the respondent optionally provided: "+demoLine()+"\n\n";
+
+    out+="HOW TO WRITE THE ANALYSIS\n";
+    out+="Write a qualitative, narrative interpretation organized around the respondent's themes. This matters most: do NOT report scores, counts, averages, or phrases like 'rated 5' or 'three of the items'. Translate every rating into ordinary language (strongly drawn to, largely indifferent, ambivalent, a clear no). The labels below are for your understanding only.\n\n";
+    out+="Structure:\n";
+    out+="1. Opening (2-3 sentences): the respondent's overall erotic character \u2014 where the energy concentrates and where it is absent.\n";
+    out+="2. Standout themes (the heart of it): a short paragraph for each theme where interest clearly concentrates. Name the theme, characterize the lean, and \u2014 crucially \u2014 pinpoint the specific texture WITHIN it using the interpretive notes (for example, 'within affection, the pull concentrates in caretaking and eye contact rather than performative touch'). Explicitly call out any give/receive asymmetry and any standout exception inside an otherwise low or high theme.\n";
+    out+="3. Boundaries (2-4 sentences, brief): what is clearly off the table, and any 'not like this' nuances. If any higher-risk activity rates highly, note it here and gently encourage safe, informed practice.\n\n";
+    out+="Rules:\n";
+    out+="- Focus only on what is distinctive. Do not walk through every theme; skip those carrying no clear signal.\n";
+    out+="- Anchor every claim in the themes and interpretive notes, not just the raw scenario names.\n";
+    out+="- Keep it tight: aim for roughly 300-500 words. Go somewhat longer ONLY if the profile is genuinely wide-ranging across many distinct high-interest themes \u2014 let complexity, not thoroughness, drive length.\n";
+    out+="- Third person throughout; refer to the person only as 'the respondent'.\n";
+    out+="- Warm, direct, non-judgmental, sex-positive. Plain sentences.\n\n";
+
+    out+="THE RESPONDENT'S RATINGS, GROUPED BY THEME (strongest interest first)\n\n";
+    themeList.forEach(({th, items})=>{
+      out+=th.toUpperCase()+"\n";
+      items.sort((a,b)=> b.r-a.r).forEach(({s,r})=>{
+        const gr = s.gr ? " ("+s.gr.toLowerCase()+")" : "";
+        const note = s.n ? " \u2014 "+s.n : "";
+        out+="  - ["+SCALE[r].short+"] "+s.t+gr+note+"\n";
+      });
+      out+="\n";
+    });
+    return out.trim();
+  }
+
+  $("copyBtn").addEventListener("click", ()=>{
+    navigator.clipboard.writeText(buildSummary()).then(()=>{ const t=$("toast"); t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); });
+  });
+  $("downloadBtn").addEventListener("click", ()=>{
+    const blob=new Blob([buildSummary()],{type:"text/plain"}); const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download="assessment-summary.txt";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+  $("restartBtn").addEventListener("click", ()=>{ order=shuffle(SCENARIOS); answers=new Array(order.length).fill(null); idx=0; show("assess"); renderQuestion(false); });
+
+})();
+</script>
+</body>
+</html>
